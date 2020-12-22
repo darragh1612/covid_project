@@ -11,7 +11,7 @@ total_cases_deaths <- read.csv("total_cases_deaths.csv", header = TRUE, row.name
 
 #Pre-Process Data
 
-#Remove Columns
+#Remove Columns -
 
 cases_deaths <- cases_deaths[ , -c(4,5,7,9,10,12,13,14,15)]
 
