@@ -1,49 +1,39 @@
+#Libraries required
+  library(ggplot2)
+  library(plotly)
+  library(readr)
+  library(factoextra)
+  library(cluster)
+  library(gridExtra)
+
+
 #Set Working Directory & Import CSV Files
+  setwd("D:/Software Project/RStudiofiles")
+  
+  fulldf <- read.csv("United_States_COVID-19_Cases_and_Deaths_by_State_over_Time.csv", header = TRUE, sep = ",")
+  map_avg_temp <- read.csv("average_temperature_map.csv", header = TRUE, sep = ",")
+  total_cases_temp <- read.csv("total_cases_temp.csv", header = TRUE, row.names = 1, sep = ",")
+  total_deaths_temp <- read.csv("total_deaths_temp.csv", header = TRUE, row.names = 1, sep = ",")
+  july_cases_temp <- read.csv("july_cases_temp.csv", header = TRUE, row.names = 3, sep = ",")
+  july_deaths_temp <- read.csv("july_deaths_temp.csv", header = TRUE, row.names = 3, sep = ",")
+  november_deaths_temp <- read.csv("november_deaths_temp.csv", header = TRUE, row.names = 3, sep = ",")
+  november_cases_temp <- read.csv("november_cases_temp.csv", header = TRUE, row.names = 3, sep = ",")
+  december_deaths_temp <- read.csv("december_deaths_temp.csv", header = TRUE, row.names = 3, sep = ",")
+  december_cases_temp <- read.csv("december_cases_temp.csv", header = TRUE, row.names = 3, sep = ",")
+  
+  
+#Main data frame pre-processing
+  #Removing columns
+    fulldf <- fulldf[ , -c(4,5,7,9,10,12,13,14,15)]
+  #Sorting main data frame by state
+    fulldf <- fulldf[order(fulldf$state),]
+    
+    
+#Maps
 
-setwd("C:/Users/darra/OneDrive/Documents/Software Project")
+  #Cases Map
 
-map_avg_temp <- read.csv("average_temperature_map.csv", header = TRUE, sep = ",")
-
-cases_deaths <- read.csv("covid19_cases_deaths_over_time.csv", header = TRUE, sep = ",")
-
-total_cases_deaths <- read.csv("total_cases_deaths.csv", header = TRUE, row.names = 1, sep = ",")
-
-
-#Pre-Process Data
-
-#Remove Columns -
-
-cases_deaths <- cases_deaths[ , -c(4,5,7,9,10,12,13,14,15)]
-
-
-#Change Column Names
-
-colnames(cases_deaths)[1] <- "date"
-
-colnames(cases_deaths)[3] <- "total_cases"
-
-colnames(cases_deaths)[4] <- "new_cases"
-
-colnames(cases_deaths)[5] <- "total_deaths"
-
-colnames(cases_deaths)[6] <- "new_deaths"
-
-#Create Subsets
-
-cases = subset(cases_deaths, select = -c(total_deaths, new_deaths))
-
-deaths = subset(cases_deaths, select = -c(total_cases, new_cases))
-
-#Visualisations
-
-library(ggplot2)
-library(plotly)
-library(dplyr)
-library(readr)
-
-#Cases Graph
-
-cases_graph = plot_geo(map_avg_temp,
+cases_map = plot_geo(map_avg_temp,
                              locationmode = 'USA-states',
                              frame = ~ month_id) %>%
   
@@ -66,11 +56,11 @@ cases_graph = plot_geo(map_avg_temp,
   
   colorbar(ticksuffix = "°F")
 
-cases_graph
+cases_map
 
-#Deaths Graph
+  #Deaths Map
 
-deaths_graph = plot_geo(map_avg_temp,
+deaths_map = plot_geo(map_avg_temp,
                         locationmode = 'USA-states',
                         frame = ~ month_id) %>%
   
@@ -93,54 +83,298 @@ deaths_graph = plot_geo(map_avg_temp,
   
   colorbar(ticksuffix = "°F")
 
-deaths_graph
+deaths_map
 
-#Cluster Analysis 1
 
-scatter_plot = subset(map_avg_temp, select = c(state, month, average_temperature, cases, deaths))
+#Clusters
 
-scatter_plot <- scatter_plot[-c(1,2,13,14,25,26,49,50,61,62,73,74,85,86,97,109,110,121,122,134,
-                                145,146,157,158,169,170,181,182,193,205,206,217,218,229,230,241,
-                                242,253,254,265,266,277,278,289,290,301,302,313,314,325,326,337,
-                                338,349,350,361,362,373,374,385,386,397,398,408,409,421,422,433,
-                                434,445,446,457,458,469,470,481,482,493,494,505,506,517,518,541,
-                                542,553,554,565,566), ]
+  #kmeans clustering cases
+    k2 <- kmeans(total_cases_temp, centers = 2, nstart = 25)
+    fviz_cluster(k2, data = total_cases_temp)
+    
+    k3 <- kmeans(total_cases_temp, centers = 3, nstart = 25)
+    k4 <- kmeans(total_cases_temp, centers = 4, nstart = 25)
+    k5 <- kmeans(total_cases_temp, centers = 5, nstart = 25)
+    
+    p1 <- fviz_cluster(k2, geom = "point", data = total_cases_temp) + ggtitle("k = 2")
+    p2 <- fviz_cluster(k3, geom = "point", data = total_cases_temp) + ggtitle("k = 3")
+    p3 <- fviz_cluster(k4, geom = "point", data = total_cases_temp) + ggtitle("k = 4")
+    p4 <- fviz_cluster(k5, geom = "point", data = total_cases_temp) + ggtitle("k = 5")
+    grid.arrange(p1, p2, p3, p4, nrow = 2)
+    
+    wssplot <- function(data, max_clusters=15) {
+      wss <- (nrow(data)-1)*sum(apply(data,2,var))
+      for (k in 2:max_clusters){
+        wss[k] <- sum(kmeans(data, centers=k)$withinss)
+      }
+      plot(1:max_clusters, wss, type="b", xlab="Number of Clusters",ylab="Within groups sum of squares")
+      }
+    
+    set.seed(42)
+    wssplot(total_cases_temp,10)
 
-View(scatter_plot)
+    #Best number of centers
+      k2 <- kmeans(total_cases_temp, centers = 3, nstart = 25)
+      fviz_cluster(k2, data = total_cases_temp, main = "Cluster Plot Cases VS Average Temperature")
 
-str(scatter_plot)
 
-plot(average_temperature ~ cases, scatter_plot)
+  #kmeans clustering deaths
+    k2 <- kmeans(total_deaths_temp, centers = 2, nstart = 25)
+    fviz_cluster(k2, data = total_deaths_temp)
+    
+    k3 <- kmeans(total_deaths_temp, centers = 3, nstart = 25)
+    k4 <- kmeans(total_deaths_temp, centers = 4, nstart = 25)
+    k5 <- kmeans(total_deaths_temp, centers = 5, nstart = 25)
+    
+    p1 <- fviz_cluster(k2, geom = "point", data = total_deaths_temp) + ggtitle("k = 2")
+    p2 <- fviz_cluster(k3, geom = "point", data = total_deaths_temp) + ggtitle("k = 3")
+    p3 <- fviz_cluster(k4, geom = "point", data = total_deaths_temp) + ggtitle("k = 4")
+    p4 <- fviz_cluster(k5, geom = "point", data = total_deaths_temp) + ggtitle("k = 5")
+    grid.arrange(p1, p2, p3, p4, nrow = 2)
+    
+    wssplot <- function(data, max_clusters=15) {
+      wss <- (nrow(data)-1)*sum(apply(data,2,var))
+      for (k in 2:max_clusters){
+        wss[k] <- sum(kmeans(data, centers=k)$withinss)
+      }
+      plot(1:max_clusters, wss, type="b", xlab="Number of Clusters",ylab="Within groups sum of squares")
+      }
+    
+    set.seed(42)
+    wssplot(total_deaths_temp,10)
 
-#Cluster Analysis 2
-
-z <- scatter_plot[,-c(1,2)]
-
-m <- apply(z,2,mean)
-
-sd <- apply(z,2,sd)
-
-z <- scale(z,m,sd)
-
-distance <- dist(z)
-
-print(distance,digits=3)
-
-hc.c <- hclust(distance)
-
-plot(hc.c)
-
-#Cluster Analysis 3
-
-library(factoextra)
-
-total_cases_deaths <- scale(total_cases_deaths)
-
-res.dist <- get_dist(total_cases_deaths, method = "pearson")
-head(round(as.matrix(res.dist), 2))[, 1:6]
-
-res.km <- eclust(total_cases_deaths, "kmeans", nstart = 25)
-
-#Cluster Analysis 4
-
-fviz_silhouette(res.km)
+    #Best number of centers
+      k2 <- kmeans(total_deaths_temp, centers = 3, nstart = 25)
+      fviz_cluster(k2, data = total_deaths_temp, main = "Cluster Plot Deaths VS Average Temperature")
+    
+ #Clusters for months with the highest cases + deaths
+      
+  #kmeans clustering July cases
+    k2 <- kmeans(july_cases_temp, centers = 2, nstart = 25)
+    fviz_cluster(k2, data = july_cases_temp)
+      
+    k3 <- kmeans(july_cases_temp, centers = 3, nstart = 25)
+    k4 <- kmeans(july_cases_temp, centers = 4, nstart = 25)
+    k5 <- kmeans(july_cases_temp, centers = 5, nstart = 25)
+      
+    p1 <- fviz_cluster(k2, geom = "point", data = july_cases_temp) + ggtitle("k = 2")
+    p2 <- fviz_cluster(k3, geom = "point", data = july_cases_temp) + ggtitle("k = 3")
+    p3 <- fviz_cluster(k4, geom = "point", data = july_cases_temp) + ggtitle("k = 4")
+    p4 <- fviz_cluster(k5, geom = "point", data = july_cases_temp) + ggtitle("k = 5")
+    grid.arrange(p1, p2, p3, p4, nrow = 2)
+      
+      wssplot <- function(data, max_clusters=15) {
+        wss <- (nrow(data)-1)*sum(apply(data,2,var))
+        for (k in 2:max_clusters){
+          wss[k] <- sum(kmeans(data, centers=k)$withinss)
+        }
+        plot(1:max_clusters, wss, type="b", xlab="Number of Clusters",ylab="Within groups sum of squares")
+        }
+      
+      set.seed(42)
+      wssplot(july_cases_temp,10)
+      
+      #Best number of centers
+        k2 <- kmeans(july_cases_temp, centers = 3, nstart = 25)
+        fviz_cluster(k2, data = july_cases_temp, main = "Cluster Plot July Cases VS Temperature")
+        
+        
+  #kmeans clustering July deaths
+    k2 <- kmeans(july_deaths_temp, centers = 2, nstart = 25)
+    fviz_cluster(k2, data = july_deaths_temp)
+        
+    k3 <- kmeans(july_deaths_temp, centers = 3, nstart = 25)
+    k4 <- kmeans(july_deaths_temp, centers = 4, nstart = 25)
+    k5 <- kmeans(july_deaths_temp, centers = 5, nstart = 25)
+        
+    p1 <- fviz_cluster(k2, geom = "point", data = july_deaths_temp) + ggtitle("k = 2")
+    p2 <- fviz_cluster(k3, geom = "point", data = july_deaths_temp) + ggtitle("k = 3")
+    p3 <- fviz_cluster(k4, geom = "point", data = july_deaths_temp) + ggtitle("k = 4")
+    p4 <- fviz_cluster(k5, geom = "point", data = july_deaths_temp) + ggtitle("k = 5")
+    grid.arrange(p1, p2, p3, p4, nrow = 2)
+        
+      wssplot <- function(data, max_clusters=15) {
+        wss <- (nrow(data)-1)*sum(apply(data,2,var))
+        for (k in 2:max_clusters){
+          wss[k] <- sum(kmeans(data, centers=k)$withinss)
+        }
+        plot(1:max_clusters, wss, type="b", xlab="Number of Clusters",ylab="Within groups sum of squares")
+        }
+        
+      set.seed(42)
+      wssplot(july_deaths_temp,10)  
+        
+      #Best number of centers
+        k2 <- kmeans(july_deaths_temp, centers = 3, nstart = 25)
+        fviz_cluster(k2, data = july_deaths_temp, main = "Cluster Plot July Deaths VS Temperature")
+        
+ 
+  #kmeans clustering November cases
+    k2 <- kmeans(november_cases_temp, centers = 2, nstart = 25)
+    fviz_cluster(k2, data = november_cases_temp)
+        
+    k3 <- kmeans(november_cases_temp, centers = 3, nstart = 25)
+    k4 <- kmeans(november_cases_temp, centers = 4, nstart = 25)
+    k5 <- kmeans(november_cases_temp, centers = 5, nstart = 25)
+        
+    p1 <- fviz_cluster(k2, geom = "point", data = november_cases_temp) + ggtitle("k = 2")
+    p2 <- fviz_cluster(k3, geom = "point", data = november_cases_temp) + ggtitle("k = 3")
+    p3 <- fviz_cluster(k4, geom = "point", data = november_cases_temp) + ggtitle("k = 4")
+    p4 <- fviz_cluster(k5, geom = "point", data = november_cases_temp) + ggtitle("k = 5")
+    grid.arrange(p1, p2, p3, p4, nrow = 2)
+        
+      wssplot <- function(data, max_clusters=15) {
+        wss <- (nrow(data)-1)*sum(apply(data,2,var))
+        for (k in 2:max_clusters){
+          wss[k] <- sum(kmeans(data, centers=k)$withinss)
+        }
+        plot(1:max_clusters, wss, type="b", xlab="Number of Clusters",ylab="Within groups sum of squares")
+        }
+        
+      set.seed(42)
+      wssplot(november_cases_temp,10)
+        
+      #Best number of centers
+        k2 <- kmeans(november_cases_temp, centers = 3, nstart = 25)
+        fviz_cluster(k2, data = november_cases_temp, main = "Cluster Plot November Cases VS Temperature")
+        
+        
+  #kmeans clustering November deaths
+    k2 <- kmeans(november_deaths_temp, centers = 2, nstart = 25)
+    fviz_cluster(k2, data = november_deaths_temp)
+        
+    k3 <- kmeans(november_deaths_temp, centers = 3, nstart = 25)
+    k4 <- kmeans(november_deaths_temp, centers = 4, nstart = 25)
+    k5 <- kmeans(november_deaths_temp, centers = 5, nstart = 25)
+        
+    p1 <- fviz_cluster(k2, geom = "point", data = november_deaths_temp) + ggtitle("k = 2")
+    p2 <- fviz_cluster(k3, geom = "point", data = november_deaths_temp) + ggtitle("k = 3")
+    p3 <- fviz_cluster(k4, geom = "point", data = november_deaths_temp) + ggtitle("k = 4")
+    p4 <- fviz_cluster(k5, geom = "point", data = november_deaths_temp) + ggtitle("k = 5")
+    grid.arrange(p1, p2, p3, p4, nrow = 2)
+        
+      wssplot <- function(data, max_clusters=15) {
+        wss <- (nrow(data)-1)*sum(apply(data,2,var))
+        for (k in 2:max_clusters){
+          wss[k] <- sum(kmeans(data, centers=k)$withinss)
+        }
+        plot(1:max_clusters, wss, type="b", xlab="Number of Clusters",ylab="Within groups sum of squares")
+        }
+        
+      set.seed(42)
+      wssplot(november_deaths_temp,10)  
+        
+      #Best number of centers
+        k2 <- kmeans(november_deaths_temp, centers = 3, nstart = 25)
+        fviz_cluster(k2, data = november_deaths_temp, main = "Cluster Plot November Deaths VS Temperature") 
+        
+        
+  #kmeans clustering December cases
+    k2 <- kmeans(december_cases_temp, centers = 2, nstart = 25)
+    fviz_cluster(k2, data = december_cases_temp)
+        
+    k3 <- kmeans(december_cases_temp, centers = 3, nstart = 25)
+    k4 <- kmeans(december_cases_temp, centers = 4, nstart = 25)
+    k5 <- kmeans(december_cases_temp, centers = 5, nstart = 25)
+        
+    p1 <- fviz_cluster(k2, geom = "point", data = december_cases_temp) + ggtitle("k = 2")
+    p2 <- fviz_cluster(k3, geom = "point", data = december_cases_temp) + ggtitle("k = 3")
+    p3 <- fviz_cluster(k4, geom = "point", data = december_cases_temp) + ggtitle("k = 4")
+    p4 <- fviz_cluster(k5, geom = "point", data = december_cases_temp) + ggtitle("k = 5")
+    grid.arrange(p1, p2, p3, p4, nrow = 2)
+        
+      wssplot <- function(data, max_clusters=15) {
+        wss <- (nrow(data)-1)*sum(apply(data,2,var))
+        for (k in 2:max_clusters){
+           wss[k] <- sum(kmeans(data, centers=k)$withinss)
+        }
+        plot(1:max_clusters, wss, type="b", xlab="Number of Clusters",ylab="Within groups sum of squares")
+        }
+        
+      set.seed(42)
+      wssplot(december_cases_temp,10)  
+        
+      #Best number of centers
+        k2 <- kmeans(december_cases_temp, centers = 3, nstart = 25)
+        fviz_cluster(k2, data = december_cases_temp, main = "Cluster Plot December Cases VS Temperature")       
+        
+        
+  #kmeans clustering December deaths
+    k2 <- kmeans(december_deaths_temp, centers = 2, nstart = 25)
+    fviz_cluster(k2, data = december_deaths_temp)
+        
+    k3 <- kmeans(december_deaths_temp, centers = 3, nstart = 25)
+    k4 <- kmeans(december_deaths_temp, centers = 4, nstart = 25)
+    k5 <- kmeans(december_deaths_temp, centers = 5, nstart = 25)
+        
+    p1 <- fviz_cluster(k2, geom = "point", data = december_deaths_temp) + ggtitle("k = 2")
+    p2 <- fviz_cluster(k3, geom = "point", data = december_deaths_temp) + ggtitle("k = 3")
+    p3 <- fviz_cluster(k4, geom = "point", data = december_deaths_temp) + ggtitle("k = 4")
+    p4 <- fviz_cluster(k5, geom = "point", data = december_deaths_temp) + ggtitle("k = 5")
+    grid.arrange(p1, p2, p3, p4, nrow = 2)
+        
+      wssplot <- function(data, max_clusters=15) {
+        wss <- (nrow(data)-1)*sum(apply(data,2,var))
+        for (k in 2:max_clusters){
+          wss[k] <- sum(kmeans(data, centers=k)$withinss)
+        }
+        plot(1:max_clusters, wss, type="b", xlab="Number of Clusters",ylab="Within groups sum of squares")
+        }
+        
+      set.seed(42)
+      wssplot(december_deaths_temp,10)  
+        
+      #Best number of centers
+        k2 <- kmeans(december_deaths_temp, centers = 3, nstart = 25)
+        fviz_cluster(k2, data = december_deaths_temp, main = "Cluster Plot December Deaths VS Temperature")
+        
+  
+#Linear regression
+  #Cases
+    ordertct <- total_cases_temp [order(total_cases_temp$avg_temp),]
+    modelcases <- lm(tot_cases ~ avg_temp, data = ordertct)
+    summary(ordertct$avg_temp)
+  
+    newx <- seq(39.5, 70.0, by=0.05)
+    plot(ordertct$avg_temp, ordertct$tot_cases, xlab="Average Temperature", ylab="Cases", main="Average Temperature & Total Cases")
+    abline(modelcases, col="lightblue", lwd = 2.5)
+  
+    conf_interval <- predict(modelcases, newdata=data.frame(avg_temp=newx), interval="confidence", level = 0.95)
+    lines(newx, conf_interval[,2], col="blue", lty=2)
+    lines(newx, conf_interval[,3], col="blue", lty=2)
+  
+    pred_interval <- predict(modelcases, newdata=data.frame(avg_temp=newx), interval="prediction", level = 0.95)
+    lines(newx, pred_interval[,2], col="orange", lty=2)
+    lines(newx, pred_interval[,3], col="orange", lty=2)
+    #Model summary
+      summary(modelcases)
+  
+  #Deaths
+    ordertdt <- total_deaths_temp [order(total_deaths_temp$avg_temp),]
+    modeldeaths <- lm(tot_deaths ~ avg_temp, data = ordertdt)
+    summary(ordertdt$avg_temp)
+    
+    newx <- seq(39.5, 70.0, by=0.05)
+    plot(ordertdt$avg_temp, ordertdt$tot_deaths, xlab="Average Temperature", ylab="Deaths", main="Average Temperature & Total Deaths")
+    abline(modeldeaths, col="lightblue", lwd = 2.5)
+    
+    conf_interval <- predict(modeldeaths, newdata=data.frame(avg_temp=newx), interval="confidence", level = 0.95)
+    lines(newx, conf_interval[,2], col="blue", lty=2)
+    lines(newx, conf_interval[,3], col="blue", lty=2)
+    
+    pred_interval <- predict(modeldeaths, newdata=data.frame(avg_temp=newx), interval="prediction", level = 0.95)
+    lines(newx, pred_interval[,2], col="orange", lty=2)
+    lines(newx, pred_interval[,3], col="orange", lty=2)
+    #Model summary
+      summary(modeldeaths)
+      
+      
+#Normality tests
+  normailtytestcases <- fulldf$new_case[1:5000]
+  shapiro.test(normailtytestcases)  
+      
+  normailitytestdeaths <- fulldf$new_death[1:5000]
+  shapiro.test(normailitytestdeaths)  
+      
+  plot(modelcases)
+  plot(modeldeaths)
